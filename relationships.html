@@ -1,0 +1,345 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>D3 v4 - force layout</title>
+    <style>
+        html, body
+        {
+            margin: 0;
+            padding: 0;
+            overflow:hidden;
+        }
+
+        html, body, #graph {
+        }
+
+    </style>
+</head>
+
+<body>
+    <svg id="graph">
+        <defs>
+            <marker id="arrow" markerWidth="20" markerHeight="20" refX="0" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                <path d="M 0,0 L 0,12 L18,6 z" fill="#000" />
+            </marker>
+            <clipPath id="circleView">
+                <circle r="50" fill="#FFFFFF" />
+            </clipPath>
+            <clipPath id="circleView2">
+                <circle r="25" />
+            </clipPath>
+        </defs>
+    </svg>
+
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.1.1/d3.min.js"></script>
+    <script>
+!(function(){
+    "use strict"
+
+    var width,height
+    var chartWidth, chartHeight
+    var margin
+    var svg = d3.select("#graph")
+    var chartLayer = svg.append("g").classed("chartLayer", true)
+
+    main()
+
+    function main() {
+        var range = 100
+        var dataRandom = {
+            nodes:d3.range(0, range).map(function(d){ return {label: "l"+d ,r:~~d3.randomUniform(8, 28)()}}),
+            links:d3.range(0, range).map(function(){ return {source:~~d3.randomUniform(range)(), target:~~d3.randomUniform(range)()} })
+        }
+
+        var data =
+            {
+                addCharacter: function(name, imageUrl)
+                {
+                    this.nodes.push({ type: "p", label: name, image: imageUrl, r: 50, f: 75 });
+                    return this.nodes.length - 1;
+                },
+
+                addSexyTime: function(player1Name, player2Name)
+                {
+                    this.nodes.push({ type: "r", image: "sexytime.png", r: 25, f: 275 });
+                    var id = this.nodes.length - 1;
+
+                    this.links.push({ source: this.findByName(player1Name), target: id, type: "p" });
+                    this.links.push({ source: this.findByName(player2Name), target: id, type: "p" });
+                    return id;
+                },
+
+                addOffspring: function(playerName, relationshipId)
+                {
+                    this.links.push({ source: relationshipId, target: this.findByName(playerName), type: "c" });
+                },
+
+                findByName: function (name)
+                {
+                    for (var i = 0; i < this.nodes.length; i++)
+                    {
+                        if (this.nodes[i].label == name)
+                        {
+                            return i;
+                        }
+                    }
+
+                    return -1;
+                },
+
+                nodes: [],
+                links: []
+            };
+
+        populate(data);
+        setSize(data);
+        drawChart(data);
+    }
+
+    function setSize(data) {
+        width = window.innerWidth;
+        height = window.innerHeight;
+
+        margin = {top:0, left:0, bottom:0, right:0 }
+
+
+        chartWidth = width - (margin.left+margin.right)
+        chartHeight = height - (margin.top+margin.bottom)
+
+        svg.attr("width", width).attr("height", height)
+
+
+        chartLayer
+            .attr("width", chartWidth)
+            .attr("height", chartHeight)
+            .attr("transform", "translate("+[margin.left, margin.top]+")")
+
+
+    }
+
+    function drawChart(data) {
+
+        var simulation = d3.forceSimulation()
+            .force("link", d3.forceLink()
+                .id(function (d) { return d.index })
+                //.distance(1000)
+                //.strength(1)
+                )
+            .force("collide",d3.forceCollide( function(d){return d.r + d.f }).iterations(16) )
+            .force("charge", d3.forceManyBody())
+            .force("center", d3.forceCenter(chartWidth / 2, chartHeight / 2))
+            .force("y", d3.forceY(0))
+            .force("x", d3.forceX(0))
+
+        var zrect = svg.append("g")
+            .attr("width", width)
+            .attr("height", height)
+            .style("fill", "none")
+            .style("pointer-events", "all")
+
+        var link = zrect.append("g")
+            .attr("class", "links")
+            .selectAll("line")
+            .data(data.links)
+            .enter()
+            .append("line")
+            .attr("stroke", "black")
+            .attr("stroke-width", function (d) { return d.type == "p" ? 5 : 1; })
+            .attr("marker-end", "url(#arrow)")
+
+        var nodeGroup = zrect.append("g")
+            .attr("class", "nodes")
+            .selectAll("g")
+            .data(data.nodes)
+            .enter()
+            .append("g")
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+
+        nodeGroup
+            .append("image")
+            .attr("xlink:href", function (d) { return d.image })
+            .attr("clip-path", function (d) { return d.type == "p" ? "url(#circleView)" : "url(#circleView2)"; })
+            .attr("x", function (d) { return d.type == "p" ? "-50" : "-25"; })
+            .attr("y", function (d) { return d.type == "p" ? "-50" : "-25"; })
+            //.attr("r", function (d) { return d.r })
+            //.attr("fill", "black")
+
+        nodeGroup
+            .append("circle")
+            .attr("r", function (d) { return d.r + d.f; })
+            .attr("fill", "none")
+            .attr("stroke", "black");
+
+        var textNode = nodeGroup
+            .append("text")
+            .text(function (d) { return d.label })
+            .attr("text-anchor", "middle")
+            .attr("alignment-baseline", "central")
+            .attr("dy", function (d) { return d.r - 10; })
+            .style("fill", "white")
+            .style("font-family", "Arial")
+            .style("font-size", "10px")
+            .call(getBB);
+
+        nodeGroup
+            .insert("rect", "text")
+            .style("fill", "black")
+            .attr("x", function (d) { return d.bbox.x; })
+            .attr("y", function (d) { return d.bbox.y; })
+            .attr("width", function (d) { return d.bbox.width; })
+            .attr("height", function (d) { return d.bbox.height; });
+
+        var ticked = function ()
+        {
+            link
+                .attr("x1", function (d) { return d.source.x - (d.source.x - d.target.x) * d.source.r / Math.sqrt((d.source.x - d.target.x) * (d.source.x - d.target.x) + (d.source.y - d.target.y) * (d.source.y - d.target.y)); })
+                .attr("y1", function (d) { return d.source.y - (d.source.y - d.target.y) * d.source.r / Math.sqrt((d.source.x - d.target.x) * (d.source.x - d.target.x) + (d.source.y - d.target.y) * (d.source.y - d.target.y)); })
+                .attr("x2", function (d) { return d.target.x - (d.target.x - d.source.x) * (d.target.r + 18) / Math.sqrt((d.source.x - d.target.x) * (d.source.x - d.target.x) + (d.source.y - d.target.y) * (d.source.y - d.target.y)); })
+                .attr("y2", function (d) { return d.target.y - (d.target.y - d.source.y) * (d.target.r + 18) / Math.sqrt((d.source.x - d.target.x) * (d.source.x - d.target.x) + (d.source.y - d.target.y) * (d.source.y - d.target.y)); });
+
+            
+            nodeGroup.attr("transform", function (d) { return "translate(" + d.x + "," + d.y + ")";
+            });
+        }
+
+        var zoom_handler = d3.zoom()
+           .on("zoom", zoom_actions);
+
+        zoom_handler(svg);
+
+        simulation
+            .nodes(data.nodes)
+            .on("tick", ticked);
+
+        simulation.force("link")
+            .links(data.links);
+
+        function getBB(selection)
+        {
+            selection.each(function (d) { d.bbox = this.getBBox(); })
+        }
+
+        function dragstarted(d) {
+            if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(d) {
+            d.fx = d3.event.x;
+            d.fy = d3.event.y;
+        }
+
+        function dragended(d) {
+            if (!d3.event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        function zoom_actions() {
+            zrect.attr("transform", d3.event.transform)
+        }
+    }
+
+    function populate(data)
+    {
+        data.addCharacter("Tytos Lannister", "https://vignette.wikia.nocookie.net/gameofthrones/images/1/1d/Famtree-TytosLannister.png/revision/latest/scale-to-width-down/100?cb=20170906004507");
+        data.addCharacter("Jeyne Lannister", "https://vignette.wikia.nocookie.net/gameofthrones/images/f/f6/House-Marbrand-Square.PNG/revision/latest/scale-to-width-down/100?cb=20160731082143");
+        data.addCharacter("Tywin Lannister", "https://vignette.wikia.nocookie.net/gameofthrones/images/c/c5/Tywin_fam_tree.jpg/revision/latest?cb=20160714033658");
+        data.addCharacter("Joanna Lannister", "https://vignette.wikia.nocookie.net/gameofthrones/images/0/0b/House-Lannister-heraldry.jpg/revision/latest/scale-to-width-down/100?cb=20140402110342");
+        data.addCharacter("Kevan Lannister", "https://vignette.wikia.nocookie.net/gameofthrones/images/f/fa/Kevan_fam_tree.jpg/revision/latest?cb=20160714033906");
+        data.addCharacter("Dorna Lannister", "https://vignette.wikia.nocookie.net/gameofthrones/images/0/01/House-Swyft-Square.PNG/revision/latest/scale-to-width-down/100?cb=20160731085759");
+        data.addCharacter("Cersei Lannister", "https://vignette.wikia.nocookie.net/gameofthrones/images/c/cd/Cersei_family_tree.jpg/revision/latest?cb=20160714032714");
+        data.addCharacter("Jaime Lannister", "https://vignette.wikia.nocookie.net/gameofthrones/images/d/d1/Jaime_family_tree.jpg/revision/latest?cb=20160714024523");
+        data.addCharacter("Tyrion Lannister", "https://vignette.wikia.nocookie.net/gameofthrones/images/3/37/Tyrion-Lannister-Familytree-Pic.jpg/revision/latest/scale-to-width-down/100?cb=20170731072247");
+        data.addCharacter("Lancel Lannister", "https://vignette.wikia.nocookie.net/gameofthrones/images/8/81/Lancel_tree.jpg/revision/latest/scale-to-width-down/100?cb=20150416215303");
+        data.addCharacter("Martyn Lannister", "https://vignette.wikia.nocookie.net/gameofthrones/images/1/1e/Martyn_Lannister_tree.jpg/revision/latest/scale-to-width-down/100?cb=20130415132717");
+        data.addCharacter("Willem Lannister", "https://vignette.wikia.nocookie.net/gameofthrones/images/8/8c/Willem_Lannister_tree.jpg/revision/latest/scale-to-width-down/100?cb=20130415180233");
+        data.addCharacter("Joffrey Baratheon", "https://vignette.wikia.nocookie.net/gameofthrones/images/8/85/Famtree-JoffreyBaratheon.png/revision/latest?cb=20170728074025");
+        data.addCharacter("Myrcella Baratheon", "https://vignette.wikia.nocookie.net/gameofthrones/images/c/ce/Mycella_Season_5_family_tree_pic.jpg/revision/latest/scale-to-width-down/100?cb=20150318192440");
+        data.addCharacter("Tommen Baratheon", "https://vignette.wikia.nocookie.net/gameofthrones/images/1/19/Famtree-TommenBaratheon.png/revision/latest?cb=20170728073017");
+        data.addCharacter("Robert Baratheon", "https://vignette.wikia.nocookie.net/gameofthrones/images/8/83/Robert_tree.jpg/revision/latest/scale-to-width-down/100?cb=20130503050100");
+        data.addCharacter("Tysha", "https://vignette.wikia.nocookie.net/gameofthrones/images/8/87/Unknown_tree.jpg/revision/latest/scale-to-width-down/100?cb=20120217101639");
+        data.addCharacter("Sansa Stark", "https://vignette.wikia.nocookie.net/gameofthrones/images/9/90/Famtree-SansaStark.png/revision/latest/scale-to-width-down/100?cb=20170904214147");
+        data.addCharacter("Unnamed son", "https://vignette.wikia.nocookie.net/gameofthrones/images/8/88/House-Baratheon-of-Kings-Landing-heraldry.jpg/revision/latest/scale-to-width-down/100?cb=20160731100449")
+        data.addCharacter("Margaery Tyrell", "https://vignette.wikia.nocookie.net/gameofthrones/images/a/a2/Famtree-MargaeryTyrell.png/revision/latest?cb=20170728071238");
+        data.addCharacter("Rickard Stark", "https://vignette.wikia.nocookie.net/gameofthrones/images/0/0c/70266f1c4153bb352f40bf85a5c68aa3.png/revision/latest/scale-to-width-down/100?cb=20160522172642");
+        data.addCharacter("Lyarra Stark", "https://vignette.wikia.nocookie.net/gameofthrones/images/7/72/House-Stark-heraldry.jpg/revision/latest/scale-to-width-down/100?cb=20140402121259");
+        data.addCharacter("Brandon Stark", "https://vignette.wikia.nocookie.net/gameofthrones/images/a/a6/Famtree-BrandonStark.png/revision/latest/scale-to-width-down/100?cb=20170904235158");
+        data.addCharacter("Catelyn Stark", "https://vignette.wikia.nocookie.net/gameofthrones/images/3/3a/Famtree-CatelynStark.png/revision/latest/scale-to-width-down/100?cb=20170904232302");
+        data.addCharacter("Eddard Stark", "https://vignette.wikia.nocookie.net/gameofthrones/images/f/f0/Famtree-EddardStark.png/revision/latest/scale-to-width-down/100?cb=20170904233618");
+        data.addCharacter("Lyanna Stark", "https://vignette.wikia.nocookie.net/gameofthrones/images/b/b8/Lyanna_tree.jpg/revision/latest/scale-to-width-down/100?cb=20170831202744");
+        data.addCharacter("Rhaegar Targaryen", "https://vignette.wikia.nocookie.net/gameofthrones/images/7/7f/Famtree-RhaegarTargaryen.png/revision/latest?cb=20170830151530");
+        data.addCharacter("Benjen Stark", "https://vignette.wikia.nocookie.net/gameofthrones/images/a/a5/Famtree-BenjenStark.png/revision/latest/scale-to-width-down/100?cb=20170904225435");
+        data.addCharacter("Robb Stark", "https://vignette.wikia.nocookie.net/gameofthrones/images/9/9c/Robb_fam_tree.png/revision/latest?cb=20130605203039");
+        data.addCharacter("Talisa Stark", "https://vignette.wikia.nocookie.net/gameofthrones/images/b/b9/Family_tree_Talisa.jpg/revision/latest/scale-to-width-down/100?cb=20130318201713");
+        data.addCharacter("Ramsay Bolton", "https://vignette.wikia.nocookie.net/gameofthrones/images/c/c9/Famtree-RamsayBolton.png/revision/latest/scale-to-width-down/100?cb=20170904215833");
+        data.addCharacter("Arya Stark", "https://vignette.wikia.nocookie.net/gameofthrones/images/d/d0/Famtree-AryaStark.png/revision/latest/scale-to-width-down/100?cb=20170904205431");
+        data.addCharacter("Bran Stark", "https://vignette.wikia.nocookie.net/gameofthrones/images/f/f4/Famtree-BranStark.png/revision/latest/scale-to-width-down/100?cb=20170904211546");
+        data.addCharacter("Rickon Stark", "https://vignette.wikia.nocookie.net/gameofthrones/images/1/10/Rickon_fam_tree.png/revision/latest?cb=20160622202016");
+        data.addCharacter("Jon Snow", "https://vignette.wikia.nocookie.net/gameofthrones/images/d/d4/Jon_Snow_family_tree_image.jpg/revision/latest/scale-to-width-down/100?cb=20160616211642");
+
+
+        var r = data.addSexyTime("Tytos Lannister", "Jeyne Lannister");
+        data.addOffspring("Tywin Lannister", r);
+        data.addOffspring("Kevan Lannister", r);
+
+        r = data.addSexyTime("Tywin Lannister", "Joanna Lannister");
+        data.addOffspring("Cersei Lannister", r);
+        data.addOffspring("Jaime Lannister", r);
+        data.addOffspring("Tyrion Lannister", r);
+
+        r = data.addSexyTime("Kevan Lannister", "Dorna Lannister");
+        data.addOffspring("Lancel Lannister", r);
+        data.addOffspring("Martyn Lannister", r);
+        data.addOffspring("Willem Lannister", r);
+
+        r = data.addSexyTime("Cersei Lannister", "Jaime Lannister");
+        data.addOffspring("Joffrey Baratheon", r);
+        data.addOffspring("Myrcella Baratheon", r);
+        data.addOffspring("Tommen Baratheon", r);
+
+        r = data.addSexyTime("Robert Baratheon", "Cersei Lannister")
+        data.addOffspring("Unnamed son", r);
+
+        r = data.addSexyTime("Tysha", "Tyrion Lannister");
+
+        r = data.addSexyTime("Tyrion Lannister", "Sansa Stark");
+
+        r = data.addSexyTime("Joffrey Baratheon", "Margaery Tyrell");
+
+        r = data.addSexyTime("Tommen Baratheon", "Margaery Tyrell");
+
+        r = data.addSexyTime("Rickard Stark", "Lyarra Stark");
+        data.addOffspring("Brandon Stark", r);
+        data.addOffspring("Eddard Stark", r);
+        data.addOffspring("Lyanna Stark", r);
+        data.addOffspring("Benjen Stark", r);
+
+        r = data.addSexyTime("Brandon Stark", "Catelyn Stark");
+
+        r = data.addSexyTime("Catelyn Stark", "Eddard Stark")
+        data.addOffspring("Robb Stark", r);
+        data.addOffspring("Sansa Stark", r);
+        data.addOffspring("Arya Stark", r);
+        data.addOffspring("Bran Stark", r);
+        data.addOffspring("Rickon Stark", r);
+
+        r = data.addSexyTime("Lyanna Stark", "Rhaegar Targaryen");
+        data.addOffspring("Jon Snow", r);
+
+        r = data.addSexyTime("Robb Stark", "Talisa Stark");
+
+        r = data.addSexyTime("Sansa Stark", "Ramsay Bolton")
+    }
+}());
+    </script>
+</body>
+</html>
