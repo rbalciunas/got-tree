@@ -330,8 +330,14 @@
         data.addCharacter("Bran Stark", "https://vignette.wikia.nocookie.net/gameofthrones/images/f/f4/Famtree-BranStark.png/revision/latest/scale-to-width-down/100?cb=20170904211546");
         data.addCharacter("Rickon Stark", "https://vignette.wikia.nocookie.net/gameofthrones/images/1/10/Rickon_fam_tree.png/revision/latest?cb=20160622202016");
         data.addCharacter("Jon Snow", "https://vignette.wikia.nocookie.net/gameofthrones/images/d/d4/Jon_Snow_family_tree_image.jpg/revision/latest/scale-to-width-down/100?cb=20160616211642");
-
-
+        data.addCharacter("Unknown Lady Bolton", "https://vignette.wikia.nocookie.net/gameofthrones/images/7/71/House-Bolton-Square.PNG/revision/latest/scale-to-width-down/100?cb=20170511001347");
+        data.addCharacter("Roose Bolton", "https://vignette.wikia.nocookie.net/gameofthrones/images/e/ed/Roose-Bolton-family-tree.jpg/revision/latest/scale-to-width-down/100?cb=20140416125845");
+        data.addCharacter("Walda Bolton", "https://vignette.wikia.nocookie.net/gameofthrones/images/d/d4/Fat-Walda-Frey-family-tree.jpg/revision/latest/scale-to-width-down/100?cb=20150201210041")
+        data.addCharacter("Domeric Bolton", "https://vignette.wikia.nocookie.net/gameofthrones/images/5/59/Bolton_baby.png/revision/latest/scale-to-width-down/100?cb=20160724071744");
+        data.addCharacter("Ramsay Bolton", "https://vignette.wikia.nocookie.net/gameofthrones/images/c/c9/Famtree-RamsayBolton.png/revision/latest/scale-to-width-down/100?cb=20170904215833");
+        data.addCharacter("Newborn Bolton", "https://vignette.wikia.nocookie.net/gameofthrones/images/5/59/Bolton_baby.png/revision/latest/scale-to-width-down/100?cb=20160724071744");
+        data.addCharacter("Miller's Wife", "http://img.freepik.com/free-icon/white-question-mark-on-a-black-circular-background_318-35996.jpg?size=100&ext=jpg")
+        
         var r = data.addSexyTime("Tytos Lannister", "Jeyne Lannister");
         data.addOffspring("Tywin Lannister", r);
         data.addOffspring("Kevan Lannister", r);
@@ -382,7 +388,16 @@
 
         r = data.addSexyTime("Robb Stark", "Talisa Stark");
 
-        r = data.addSexyTime("Sansa Stark", "Ramsay Bolton")
+        r = data.addSexyTime("Sansa Stark", "Ramsay Bolton");
+        
+        r = data.addSexyTime("Unknown Lady Bolton", "Roose Bolton");
+        data.addOffspring("Domeric Bolton", r);
+        
+        r = data.addSexyTime("Roose Bolton", "Walda Bolton");
+        data.addOffspring("Newborn Bolton", r);
+        
+        r = data.addSexyTime("Roose Bolton", "Miller's Wife");
+        data.addOffspring("Ramsay Bolton", r);
     }
 }());
     </script>
